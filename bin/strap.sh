@@ -48,10 +48,9 @@ STDIN_FILE_DESCRIPTOR="0"
 # STRAP_GIT_NAME=
 # STRAP_GIT_EMAIL=
 # STRAP_GITHUB_USER=
-# STRAP_GITHUB_TOKEN=
 # CUSTOM_HOMEBREW_TAP=
 # CUSTOM_BREW_COMMAND=
-STRAP_ISSUES_URL='https://github.com/MikeMcQuaid/strap/issues/new'
+STRAP_ISSUES_URL='https://github.com/benshu/strap/issues/new'
 
 # We want to always prompt for sudo password at least once rather than doing
 # root stuff unexpectedly.
@@ -131,9 +130,9 @@ escape() {
 
 # Given a list of scripts in the dotfiles repo, run the first one that exists
 run_dotfile_scripts() {
-  if [ -d ~/.dotfiles ]; then
+  if [ -d ~/dotfiles ]; then
     (
-      cd ~/.dotfiles
+      cd ~/dotfiles
       for i in "$@"; do
         if [ -f "$i" ] && [ -x "$i" ]; then
           log "Running dotfiles $i:"
@@ -150,7 +149,6 @@ run_dotfile_scripts() {
 }
 
 [ "$USER" = "root" ] && abort "Run Strap as yourself, not root."
-groups | grep $Q -E "\b(admin)\b" || abort "Add $USER to the admin group."
 
 # Prevent sleeping during script execution, as long as the machine is on AC power
 caffeinate -s -w $$ &
@@ -163,36 +161,6 @@ sudo_askpass defaults write com.apple.Safari \
 sudo_askpass defaults write com.apple.Safari \
   com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabledForLocalFiles \
   -bool false
-sudo_askpass defaults write com.apple.screensaver askForPassword -int 1
-sudo_askpass defaults write com.apple.screensaver askForPasswordDelay -int 0
-sudo_askpass defaults write /Library/Preferences/com.apple.alf globalstate -int 1
-sudo_askpass launchctl load /System/Library/LaunchDaemons/com.apple.alf.agent.plist 2>/dev/null
-
-if [ -n "$STRAP_GIT_NAME" ] && [ -n "$STRAP_GIT_EMAIL" ]; then
-  LOGIN_TEXT=$(escape "Found this computer? Please contact $STRAP_GIT_NAME at $STRAP_GIT_EMAIL.")
-  echo "$LOGIN_TEXT" | grep -q '[()]' && LOGIN_TEXT="'$LOGIN_TEXT'"
-  sudo_askpass defaults write /Library/Preferences/com.apple.loginwindow \
-    LoginwindowText \
-    "$LOGIN_TEXT"
-fi
-logk
-
-# Check and enable full-disk encryption.
-logn "Checking full-disk encryption status:"
-if fdesetup status | grep $Q -E "FileVault is (On|Off, but will be enabled after the next restart)."; then
-  logk
-elif [ -n "$STRAP_CI" ]; then
-  echo "SKIPPED (for CI)"
-elif [ -n "$STRAP_INTERACTIVE" ]; then
-  echo
-  log "Enabling full-disk encryption on next reboot:"
-  sudo_askpass fdesetup enable -user "$USER" \
-    | tee ~/Desktop/"FileVault Recovery Key.txt"
-  logk
-else
-  echo
-  abort "Run 'sudo fdesetup enable -user \"$USER\"' to enable full-disk encryption."
-fi
 
 # Install the Xcode Command Line Tools.
 if ! [ -f "/Library/Developer/CommandLineTools/usr/bin/git" ]
@@ -240,41 +208,21 @@ xcode_license
 # Setup Git configuration.
 logn "Configuring Git:"
 if [ -n "$STRAP_GIT_NAME" ] && ! git config user.name >/dev/null; then
-  git config --global user.name "$STRAP_GIT_NAME"
+  git config --file ~/.gitlocal user.name "$STRAP_GIT_NAME"
 fi
 
 if [ -n "$STRAP_GIT_EMAIL" ] && ! git config user.email >/dev/null; then
-  git config --global user.email "$STRAP_GIT_EMAIL"
+  git config --file ~/.gitlocal user.email "$STRAP_GIT_EMAIL"
 fi
 
 if [ -n "$STRAP_GITHUB_USER" ] && [ "$(git config github.user)" != "$STRAP_GITHUB_USER" ]; then
-  git config --global github.user "$STRAP_GITHUB_USER"
+  git config --file ~/.gitlocal github.user "$STRAP_GITHUB_USER"
 fi
 
 # Squelch git 2.x warning message when pushing
 if ! git config push.default >/dev/null; then
-  git config --global push.default simple
+  git config --file ~/.gitlocal push.default simple
 fi
-
-# Setup GitHub HTTPS credentials.
-if git credential-osxkeychain 2>&1 | grep $Q "git.credential-osxkeychain"
-then
-  # Actually execute the credential in case it's a wrapper script for credential-osxkeychain
-  if git "credential-$(git config --global credential.helper 2>/dev/null)" 2>&1 \
-     | grep -v $Q "git.credential-osxkeychain"
-  then
-    git config --global credential.helper osxkeychain
-  fi
-
-  if [ -n "$STRAP_GITHUB_USER" ] && [ -n "$STRAP_GITHUB_TOKEN" ]
-  then
-    printf "protocol=https\\nhost=github.com\\n" | git credential reject
-    printf "protocol=https\\nhost=github.com\\nusername=%s\\npassword=%s\\n" \
-          "$STRAP_GITHUB_USER" "$STRAP_GITHUB_TOKEN" \
-          | git credential approve
-  fi
-fi
-logk
 
 # Setup Homebrew directory and permissions.
 logn "Installing Homebrew:"
@@ -356,12 +304,12 @@ if [ -n "$STRAP_GITHUB_USER" ]; then
 
   if git ls-remote "$DOTFILES_URL" &>/dev/null; then
     log "Fetching $STRAP_GITHUB_USER/dotfiles from GitHub:"
-    if [ ! -d "$HOME/.dotfiles" ]; then
-      log "Cloning to ~/.dotfiles:"
-      git clone $Q "$DOTFILES_URL" ~/.dotfiles
+    if [ ! -d "$HOME/dotfiles" ]; then
+      log "Cloning to ~/dotfiles:"
+      git clone $Q "$DOTFILES_URL" ~/dotfiles
     else
       (
-        cd ~/.dotfiles
+        cd ~/dotfiles
         git pull $Q --rebase --autostash
       )
     fi
@@ -393,7 +341,7 @@ fi
 
 # Install from local Brewfile
 if [ -f "$HOME/.Brewfile" ]; then
-  log "Installing from user Brewfile on GitHub:"
+  log "Installing from user local Brewfile:"
   brew bundle check --global || brew bundle --global
   logk
 fi
