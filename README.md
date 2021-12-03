@@ -7,6 +7,14 @@ A script to bootstrap a minimal macOS development system. Adapted for Intsights,
 
 Heavily -copied- inspired by [Strap](https://github.com/MikeMqcuaid/strap) from [GitHub](https://github.com/) with attempt to adapt to our environment and style.
 
+## Ideals
+
+- Aim for the broadest common ground sane defaults and requirement.
+- Avoid personal taste as much as possible.
+- Allow for extension with external dotfiles repository with simple hooks.
+- Strengthen security
+- Adhere to company policy
+
 ## Features
 
 - Disables Java in Safari (for better security)
@@ -20,14 +28,6 @@ Heavily -copied- inspired by [Strap](https://github.com/MikeMqcuaid/strap) from 
 - Installs dotfiles from a user's `https://github.com/username/dotfiles` repository. If they exist and are executable: runs `script/setup` to configure the dotfiles and `script/strap-after-setup` after setting up everything else.
 - Installs software from a user's `Brewfile` in their `https://github.com/username/homebrew-brewfile` repository or `.Brewfile` in their home directory.
 - Idempotent
-
-## Ideals
-
-- Aim for the broadest common ground sane defaults and requirement.
-- Avoid personal taste as much as possible.
-- Allow for extension with external dotfiles repository with simple hooks.
-- Strengthen security
-- Adhere to company policy
 
 ## Usage
 
